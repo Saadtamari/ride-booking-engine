@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rides
+      POSTGRES_PASSWORD: rides
+      POSTGRES_DB: rides
+    # Allow plenty of connections — 50+ concurrent acceptors each hold a
+    # connection while blocked on the contended row lock.
+    command: ["postgres", "-c", "max_connections=300"]
+    # Host port is configurable to dodge clashes with a local Postgres:
+    #   PG_HOST_PORT=55432 docker compose up
+    ports:
+      - "${PG_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rides -d rides"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://rides:rides@postgres:5432/rides
+      REDIS_URL: redis://redis:6379
+      IDEMPOTENCY_TTL_SECONDS: 86400
+      PG_POOL_MAX: 80
+    ports:
+      - "${APP_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
