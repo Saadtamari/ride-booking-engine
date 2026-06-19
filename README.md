@@ -301,9 +301,11 @@ original. Storing the exact serialized bytes guarantees a replay equals the
 original response, which is what idempotency promises.
 
 **Pool sizing.** Under a burst, every *losing* request holds its connection while
-blocked on the contended row lock. So `PG_POOL_MAX` must exceed peak concurrency
-(default `80`, with Postgres `max_connections=300`), otherwise the pool would
-starve itself.
+blocked on the contended row lock. So `PG_POOL_MAX` is kept comfortably above
+expected peak concurrency (default `80`, with Postgres `max_connections=300`). If
+a burst ever exceeds the pool, extra requests simply queue for a connection rather
+than fail — correctness is unaffected, only latency — but headroom keeps blocked
+losers from waiting behind that queue.
 
 **Failure & edge handling.** Missing key → `400`; same key + different body →
 `422`; same driver re-accepting its own ride via a new key → idempotent `200`;

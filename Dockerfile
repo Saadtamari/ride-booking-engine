@@ -3,7 +3,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -16,7 +16,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Compiled app (the build step already copied schema.sql into dist/db)
 COPY --from=build /app/dist ./dist
