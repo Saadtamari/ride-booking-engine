@@ -23,5 +23,5 @@ COPY --from=build /app/dist ./dist
 
 EXPOSE 3000
 
-# Apply schema (idempotent) then boot the server.
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/server.js"]
+# The server applies the (idempotent) schema on boot before it starts listening.
+CMD ["node", "dist/server.js"]
